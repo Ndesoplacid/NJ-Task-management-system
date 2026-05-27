@@ -12,6 +12,17 @@ if (apiURL && !apiURL.endsWith('/api') && !apiURL.endsWith('/api/')) {
 axios.defaults.baseURL = apiURL;
 axios.defaults.withCredentials = true; // Send HttpOnly cookie automatically
 
+// Dynamic Authorization Header Interceptor for local storage fallback (fixes mobile cookie restrictions)
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +39,9 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data.user);
       }
     } catch (error) {
-      // User is not logged in, ignore error logs on boot
+      // User is not logged in or token is invalid, clean up local storage fallback
       setUser(null);
+      localStorage.removeItem('token');
     } finally {
       setLoading(false);
     }
@@ -55,6 +67,9 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       const response = await axios.post('/auth/register', { username, email, password });
       if (response.data.success) {
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+        }
         setUser(response.data.user);
         closeAuthModal();
         return { success: true };
@@ -71,6 +86,9 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       const response = await axios.post('/auth/login', { email, password });
       if (response.data.success) {
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+        }
         setUser(response.data.user);
         closeAuthModal();
         return { success: true };
@@ -99,6 +117,9 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       const response = await axios.put(`/auth/resetpassword/${token}`, { password });
       if (response.data.success) {
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+        }
         setUser(response.data.user);
         closeAuthModal();
         return { success: true };
@@ -116,7 +137,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error', error);
     } finally {
-      // Always clear user locally even if backend cookie removal errors out
+      // Always clear user and token locally even if backend cookie removal errors out
+      localStorage.removeItem('token');
       setUser(null);
     }
   };

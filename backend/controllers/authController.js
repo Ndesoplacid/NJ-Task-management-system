@@ -24,6 +24,7 @@ const sendTokenResponse = (user, statusCode, res) => {
     .cookie('token', token, cookieOptions)
     .json({
       success: true,
+      token, // Return token for localStorage backup (fixes mobile third-party cookie restrictions)
       user: {
         id: user._id,
         username: user.username,
