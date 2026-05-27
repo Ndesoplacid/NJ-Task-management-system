@@ -4,7 +4,12 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 // Configure Axios defaults
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+let apiURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Defensive check: ensure the URL always ends with '/api' for backend compatibility
+if (apiURL && !apiURL.endsWith('/api') && !apiURL.endsWith('/api/')) {
+  apiURL = apiURL.endsWith('/') ? `${apiURL}api` : `${apiURL}/api`;
+}
+axios.defaults.baseURL = apiURL;
 axios.defaults.withCredentials = true; // Send HttpOnly cookie automatically
 
 export const AuthProvider = ({ children }) => {
